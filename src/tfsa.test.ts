@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { computeYearStatus, TOTAL_ROOM } from "./tfsa";
+import { computeYearStatus, getTotalRoomForBirthYear, TOTAL_ROOM } from "./tfsa";
 
 describe("computeYearStatus", () => {
   test("$0 contributed → all empty", () => {
@@ -71,5 +71,17 @@ describe("computeYearStatus", () => {
 
   test("TOTAL_ROOM constant equals sum of all limits", () => {
     expect(TOTAL_ROOM).toBe(109000);
+  });
+});
+
+describe("getTotalRoomForBirthYear", () => {
+  test("born 1990 (eligible from 2009) → full $109,000", () => {
+    expect(getTotalRoomForBirthYear(1990)).toBe(109000);
+  });
+
+  test("born 2000 (eligible from 2018) → sum of 2018–2026 limits", () => {
+    // 2018: 5500, 2019–2022: 6000×4, 2023: 6500, 2024–2026: 7000×3
+    const expected = 5500 + 6000 * 4 + 6500 + 7000 * 3;
+    expect(getTotalRoomForBirthYear(2000)).toBe(expected);
   });
 });

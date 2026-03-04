@@ -63,3 +63,14 @@ export function computeYearStatus(totalContributed: number): YearStatus[] {
   // Always return in chronological order (2009 → 2026) for display
   return TFSA_YEARS.map(({ year }) => statusMap.get(year) as YearStatus);
 }
+
+export function getFirstEligibleYear(birthYear: number): number {
+  return Math.max(2009, birthYear + 18);
+}
+
+export function getTotalRoomForBirthYear(birthYear: number): number {
+  const firstEligibleYear = getFirstEligibleYear(birthYear);
+  return TFSA_YEARS
+    .filter((y) => y.year >= firstEligibleYear)
+    .reduce((sum, y) => sum + y.limit, 0);
+}

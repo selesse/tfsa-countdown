@@ -1,23 +1,10 @@
 import confetti from "canvas-confetti";
 import { useEffect, useRef, useState } from "react";
 import { Temporal } from "@js-temporal/polyfill";
-import type { YearStatus } from "../tfsa";
 import { LogPayment } from "./components/LogPayment";
 import { ProgressSummary } from "./components/ProgressSummary";
 import { YearGrid } from "./components/YearGrid";
-
-interface Summary {
-  totalContributed: number;
-  totalRoom: number;
-  yearStatus: YearStatus[];
-}
-
-interface Contribution {
-  id: number;
-  amount: number;
-  contributed_at: string;
-  note: string | null;
-}
+import type { StorageAdapter, Summary, Contribution } from "../storage/types";
 
 function fmt(n: number): string {
   return n.toLocaleString("en-CA", {
@@ -35,7 +22,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export function App() {
+export function App({ storage }: { storage: StorageAdapter }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [milestone, setMilestone] = useState<string | null>(null);
@@ -43,12 +30,10 @@ export function App() {
   const milestoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function fetchAll() {
-    const [summaryRes, contribRes] = await Promise.all([
-      fetch("/api/summary"),
-      fetch("/api/contributions"),
+    const [summaryData, contribData] = await Promise.all([
+      storage.getSummary(),
+      storage.getContributions(),
     ]);
-    const summaryData = (await summaryRes.json()) as Summary;
-    const contribData = (await contribRes.json()) as Contribution[];
     setSummary(summaryData);
     setContributions(contribData);
     prevDoneYears.current = new Set(
@@ -61,18 +46,7 @@ export function App() {
   }, []);
 
   async function handlePayment(amount: number, date: string, note?: string) {
-    const res = await fetch("/api/contributions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount, date, note }),
-    });
-
-    if (!res.ok) {
-      const err = (await res.json()) as { error: string };
-      throw new Error(err.error);
-    }
-
-    const newSummary = (await res.json()) as Summary;
+    const newSummary = await storage.addContribution(amount, date, note);
     const newDoneYears = newSummary.yearStatus
       .filter((y) => y.status === "done")
       .map((y) => y.year);
@@ -82,7 +56,6 @@ export function App() {
     );
 
     if (justCompleted.length > 0) {
-      // Fire confetti
       confetti({
         particleCount: 120,
         spread: 80,
@@ -110,9 +83,8 @@ export function App() {
     setSummary(newSummary);
     prevDoneYears.current = new Set(newDoneYears);
 
-    // Refresh contributions list
-    const contribRes = await fetch("/api/contributions");
-    setContributions((await contribRes.json()) as Contribution[]);
+    const contribData = await storage.getContributions();
+    setContributions(contribData);
   }
 
   if (!summary) {

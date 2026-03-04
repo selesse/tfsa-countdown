@@ -10,13 +10,19 @@ interface Props {
 export function Onboarding({ onComplete }: Props) {
   const [birthYear, setBirthYear] = useState("");
   const [remainingRoom, setRemainingRoom] = useState("");
+  const [remainingRoomTouched, setRemainingRoomTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const parsedBirthYear = Number.parseInt(birthYear);
+  const birthYearValid = parsedBirthYear >= 1971 && parsedBirthYear <= 2008;
+  const defaultRoom = birthYearValid ? getTotalRoomForBirthYear(parsedBirthYear) : null;
+  const displayedRoom = remainingRoomTouched ? remainingRoom : (defaultRoom?.toString() ?? "");
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const year = Number.parseInt(birthYear);
-    const remaining = Number.parseFloat(remainingRoom.replace(/,/g, ""));
+    const year = parsedBirthYear;
+    const remaining = Number.parseFloat(displayedRoom.replace(/,/g, ""));
 
     if (!year || year < 1971 || year > 2008) {
       setError("Enter a valid birth year (1971–2008)");
@@ -88,7 +94,7 @@ export function Onboarding({ onComplete }: Props) {
                 max="2008"
                 placeholder="e.g. 1985"
                 value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value)}
+                onChange={(e) => { setBirthYear(e.target.value); setRemainingRoomTouched(false); }}
                 style={inputStyle}
                 required
               />
@@ -104,8 +110,8 @@ export function Onboarding({ onComplete }: Props) {
                 min="0"
                 step="0.01"
                 placeholder="e.g. 75000"
-                value={remainingRoom}
-                onChange={(e) => setRemainingRoom(e.target.value)}
+                value={displayedRoom}
+                onChange={(e) => { setRemainingRoom(e.target.value); setRemainingRoomTouched(true); }}
                 style={inputStyle}
                 required
               />

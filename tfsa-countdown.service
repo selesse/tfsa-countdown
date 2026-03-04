@@ -1,0 +1,16 @@
+[Unit]
+Description=TFSA Countdown
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+WorkingDirectory=/home/alex/git/tfsa-countdown
+EnvironmentFile=/home/alex/git/tfsa-countdown/.env
+ExecStart=/home/alex/.bun/bin/bun run /home/alex/git/tfsa-countdown/src/server.ts
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

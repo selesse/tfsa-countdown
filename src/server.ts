@@ -11,6 +11,7 @@ const PORT = Number.parseInt(process.env.PORT || "3000");
 const buildResult = await Bun.build({
   entrypoints: ["./src/client/main.tsx"],
   outdir: "./dist",
+  naming: "[name]-[hash].[ext]",
   minify: process.env.NODE_ENV === "production",
 });
 
@@ -22,26 +23,22 @@ if (!buildResult.success) {
   process.exit(1);
 }
 
+const jsOutput = buildResult.outputs.find((o) => o.kind === "entry-point");
+const cssOutput = buildResult.outputs.find((o) => o.path.endsWith(".css"));
+const jsPath = `/${jsOutput!.path.split("/dist/")[1]}`;
+const cssPath = cssOutput ? `/${cssOutput.path.split("/dist/")[1]}` : null;
+
 const HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TFSA Countdown</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f0f1a;
-      color: #eee;
-      min-height: 100vh;
-    }
-    #root { min-height: 100vh; }
-  </style>
+  ${cssPath ? `<link rel="stylesheet" href="${cssPath}">` : ""}
 </head>
 <body>
   <div id="root"></div>
-  <script src="/bundle.js"></script>
+  <script src="${jsPath}"></script>
 </body>
 </html>`;
 
@@ -65,11 +62,27 @@ const server = Bun.serve({
     const path = url.pathname;
 
     if (path === "/" || path === "/index.html") {
-      return new Response(HTML, { headers: { "Content-Type": "text/html" } });
+      return new Response(HTML, {
+        headers: {
+          "Content-Type": "text/html",
+          "Cache-Control": "no-store",
+        },
+      });
     }
 
-    if (path === "/bundle.js") {
-      return new Response(Bun.file("./dist/main.js"));
+    if (path === jsPath) {
+      return new Response(Bun.file(`./dist/${path.slice(1)}`), {
+        headers: { "Cache-Control": "public, max-age=31536000, immutable" },
+      });
+    }
+
+    if (cssPath && path === cssPath) {
+      return new Response(Bun.file(`./dist/${path.slice(1)}`), {
+        headers: {
+          "Content-Type": "text/css",
+          "Cache-Control": "public, max-age=31536000, immutable",
+        },
+      });
     }
 
     if (path === "/api/summary" && req.method === "GET") {

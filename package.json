@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run src/server.ts",
     "build": "bun build src/client/main.tsx --outdir dist --minify",
-    "build:static": "bun build src/client/main-static.tsx --outfile dist/bundle.js --minify && cp public/index.html dist/",
+    "build:static": "bun build public/index.html --outdir dist --minify",
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "bun test"
